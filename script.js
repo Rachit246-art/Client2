@@ -39,24 +39,52 @@ document.addEventListener('DOMContentLoaded', function() {
         observer.observe(section);
     });
 
-    // 3. Trigger popup on 3rd section (About Us / our-story)
+    // 3. Trigger popup on specific sections and on load
     var promoPopup = document.getElementById('promo-popup');
     var closePromoPopup = document.getElementById('close-promo-popup');
-    var targetSection = document.querySelector('.our-story');
-    var popupShown = false;
+    
+    if (promoPopup) {
+        var triggered = {
+            'load': false,
+            'collection': false,
+            'gallery': false,
+            'reviews': false
+        };
 
-    if (promoPopup && targetSection) {
+        function showPopup(source) {
+            if (!triggered[source]) {
+                promoPopup.classList.add('show');
+                document.body.style.overflow = 'hidden';
+                triggered[source] = true;
+            }
+        }
+
+        // 1. When user open
+        setTimeout(function() { showPopup('load'); }, 3000); // 3 second delay on load
+
+        // Observe sections
+        var sections = [
+            { id: '#featured-idols', key: 'collection' },
+            { id: '#gallery', key: 'gallery' },
+            { id: '#reviews', key: 'reviews' }
+        ];
+
         var popupObserver = new IntersectionObserver(function(entries) {
             entries.forEach(function(entry) {
-                if (entry.isIntersecting && !popupShown) {
-                    promoPopup.classList.add('show');
-                    document.body.style.overflow = 'hidden';
-                    popupShown = true; // Only show once
+                if (entry.isIntersecting) {
+                    var key = entry.target.getAttribute('data-popup-key');
+                    if (key) showPopup(key);
                 }
             });
-        }, { threshold: 0.3 });
+        }, { threshold: 0.2 });
 
-        popupObserver.observe(targetSection);
+        sections.forEach(function(sec) {
+            var el = document.querySelector(sec.id);
+            if (el) {
+                el.setAttribute('data-popup-key', sec.key);
+                popupObserver.observe(el);
+            }
+        });
 
         closePromoPopup.addEventListener('click', function() {
             promoPopup.classList.remove('show');
@@ -89,3 +117,77 @@ function closeLightbox(event) {
         document.body.style.overflow = 'auto';
     }
 }
+
+// Product Carousel Logic
+function moveCarousel(carouselId, direction) {
+    var carousel = document.getElementById('carousel-' + carouselId);
+    if (!carousel) return;
+    
+    var mediaItems = carousel.querySelectorAll('.carousel-images img, .carousel-images video');
+    var dots = carousel.querySelectorAll('.carousel-dots .dot');
+    var currentIdx = parseInt(carousel.getAttribute('data-current') || '0');
+    
+    var newIdx = currentIdx + direction;
+    if (newIdx < 0) newIdx = mediaItems.length - 1;
+    if (newIdx >= mediaItems.length) newIdx = 0;
+    
+    setCarousel(carouselId, newIdx);
+}
+
+function setCarousel(carouselId, index) {
+    var carousel = document.getElementById('carousel-' + carouselId);
+    if (!carousel) return;
+    
+    var mediaItems = carousel.querySelectorAll('.carousel-images img, .carousel-images video');
+    var dots = carousel.querySelectorAll('.carousel-dots .dot');
+    
+    // Update active classes
+    mediaItems.forEach(function(media, i) {
+        if (i === index) {
+            media.classList.add('active');
+            if (media.tagName.toLowerCase() === 'video') {
+                media.play().catch(function(e){});
+            }
+        } else {
+            media.classList.remove('active');
+            if (media.tagName.toLowerCase() === 'video') {
+                media.pause();
+            }
+        }
+    });
+    
+    dots.forEach(function(dot, i) {
+        if (i === index) dot.classList.add('active');
+        else dot.classList.remove('active');
+    });
+    
+    // Save current index
+    carousel.setAttribute('data-current', index);
+}
+
+// Countdown Timer Logic for Product Cards
+document.addEventListener('DOMContentLoaded', function() {
+    var timerElements = document.querySelectorAll('.timer-countdown');
+    if (timerElements.length === 0) return;
+    
+    // Initial time (e.g., 3 hours, 22 mins, 25 secs)
+    var timeInSeconds = 3 * 3600 + 22 * 60 + 25;
+    
+    setInterval(function() {
+        if (timeInSeconds <= 0) timeInSeconds = 24 * 3600; // Reset to 24h if it hits 0
+        timeInSeconds--;
+        
+        var h = Math.floor(timeInSeconds / 3600);
+        var m = Math.floor((timeInSeconds % 3600) / 60);
+        var s = timeInSeconds % 60;
+        
+        var formatted = 
+            (h < 10 ? '0' + h : h) + 'H:' + 
+            (m < 10 ? '0' + m : m) + 'M:' + 
+            (s < 10 ? '0' + s : s) + 'S';
+            
+        timerElements.forEach(function(el) {
+            el.textContent = formatted;
+        });
+    }, 1000);
+});
